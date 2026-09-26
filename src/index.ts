@@ -74,7 +74,25 @@ export const activate: PluginModule["activate"] = async (host) => {
       projectId: scope.projectId,
       sessionId: scope.sessionId,
     };
-    await transact(() => save([...inbox, item].slice(-500)));
+    const duplicate = await transact(async () => {
+      scope.signal?.throwIfAborted();
+      const existing = source.startsWith("run:")
+        ? inbox.find(
+            (notice) =>
+              notice.source === source &&
+              notice.projectId === scope.projectId &&
+              notice.sessionId === scope.sessionId,
+          )
+        : undefined;
+      if (existing) return existing;
+      await save([...inbox, item].slice(-500));
+      return undefined;
+    });
+    if (duplicate)
+      return {
+        item: duplicate,
+        desktop: { supported: false, duplicate: true },
+      };
     // Persist first: OS suppression/failure must not lose a notification.
     try {
       return {
@@ -181,17 +199,7 @@ export const activate: PluginModule["activate"] = async (host) => {
     runCompleted: async (event, services) => {
       const config = await host.config?.read(event.projectId);
       if (config?.values.onCompletion === false) return;
-      await queue;
       const source = `run:${event.runId}`;
-      if (
-        inbox.some(
-          (item) =>
-            item.source === source &&
-            item.projectId === event.projectId &&
-            item.sessionId === event.sessionId,
-        )
-      )
-        return;
       await show(
         {
           title:

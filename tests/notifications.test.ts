@@ -56,4 +56,15 @@ test("persists notifications despite unavailable desktop delivery and isolates p
   await expect(
     tool.execute({ action: "show", title: "", body: "bad" }, context),
   ).rejects.toThrow();
+  const completion = { ...context, outcome: "completed", messages: [] };
+  await Promise.all(
+    Array.from({ length: 8 }, () =>
+      contribution!.runCompleted!(completion as any, { signal } as any),
+    ),
+  );
+  const afterReplay = (await tool.execute({ action: "list" }, context)) as any;
+  expect(
+    afterReplay.items.filter((item: any) => item.source === "run:run"),
+  ).toHaveLength(1);
+  expect(host.notifications!.show).toHaveBeenCalledTimes(2);
 });
