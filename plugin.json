@@ -1,19 +1,16 @@
 {
   "apiVersion": 1,
-  "extensions": ["panel"],
+  "extensions": [],
   "id": "modera.notifications",
   "name": "Notifications",
   "version": "0.1.0",
-  "description": "Desktop notifications and a persistent inbox for completed tasks.",
+  "description": "Publish agent messages to the system notification center.",
   "author": "Modera",
   "category": "productivity",
   "icon": "bell",
   "main": "dist/index.cjs",
   "permissions": [
-    "notifications.show",
-    "runs.observe",
-    "storage.read",
-    "storage.write"
+    "notifications.show"
   ],
   "provides": {
     "modera.notifications.delivery": {
@@ -21,25 +18,15 @@
       "apiVersion": 1
     }
   },
-  "config": {
-    "onCompletion": {
-      "type": "boolean",
-      "default": true,
-      "title": "Notify when a run completes"
-    }
-  },
   "tools": [
     {
       "id": "notifications_manage",
       "title": "Notifications",
-      "description": "Show a notification, list the inbox or mark an item read. Notification text is plain text.",
+      "description": "Publish a plain-text message to the system notification center. Use only for meaningful background results, not routine progress.",
       "inputSchema": {
         "type": "object",
         "additionalProperties": false,
         "properties": {
-          "action": {
-            "enum": ["show", "list", "read"]
-          },
           "title": {
             "type": "string",
             "minLength": 1,
@@ -48,25 +35,19 @@
           "body": {
             "type": "string",
             "maxLength": 4000
-          },
-          "id": {
-            "type": "string",
-            "maxLength": 100
           }
         },
-        "required": ["action"]
+        "required": ["title", "body"]
       },
       "requiredPermissions": [
-        "notifications.show",
-        "storage.read",
-        "storage.write"
+        "notifications.show"
       ]
     }
   ],
   "locales": {
     "zh-CN": {
       "name": "通知",
-      "description": "任务完成通知和持久化通知收件箱。"
+      "description": "向系统消息中心发布重要任务结果。"
     }
   }
 }

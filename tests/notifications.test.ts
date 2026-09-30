@@ -1,70 +1,31 @@
-import { afterEach, expect, test, vi } from "vitest";
-import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { expect, test, vi } from "vitest";
 import { activate } from "../src/index";
 import type { PluginContext } from "@modera/plugin-sdk";
-
-const directories: string[] = [];
-afterEach(async () => {
-  for (const dir of directories.splice(0))
-    await rm(dir, { recursive: true, force: true });
-});
-test("persists notifications despite unavailable desktop delivery and isolates projects", async () => {
-  const storagePath = await mkdtemp(join(tmpdir(), "modera-notice-test-"));
-  directories.push(storagePath);
-  const signal = new AbortController().signal;
+test("optional plugin only publishes to the system; it owns no inbox or completion observer", async () => {
+  const publish = vi.fn(async () => ({ id: "notice" }));
   const host = {
-    pluginId: "modera.notifications",
-    storagePath,
-    grantedPermissions: new Set(),
-    signal,
-    notifications: {
-      show: vi.fn().mockRejectedValue(new Error("OS disabled")),
-    },
+    notifications: { publish },
+    signal: new AbortController().signal,
   } as unknown as PluginContext;
   const contribution = await activate(host);
-  const tool = contribution!.tools![0]!;
   const context = {
-    projectId: "one",
+    projectId: "project",
     sessionId: "session",
     runId: "run",
-    signal,
+    signal: host.signal,
   };
-  const result = (await tool.execute(
-    { action: "show", title: "Finished", body: "Result" },
+  await contribution!.tools![0]!.execute(
+    { title: "Ready", body: "Report" },
     context,
-  )) as any;
-  expect(result.desktop.supported).toBe(false);
-  expect(
-    await tool.execute({ action: "list" }, { ...context, projectId: "two" }),
-  ).toEqual({ items: [] });
-  await expect(
-    tool.execute(
-      { action: "read", id: result.item.id },
-      { ...context, projectId: "two" },
-    ),
-  ).rejects.toThrow();
-  await tool.execute({ action: "read", id: result.item.id }, context);
-  const reloaded = await activate(host);
-  const list = (await reloaded!.tools![0]!.execute(
-    { action: "list" },
-    context,
-  )) as any;
-  expect(list.items).toHaveLength(1);
-  expect(list.items[0].read).toBe(true);
-  await expect(
-    tool.execute({ action: "show", title: "", body: "bad" }, context),
-  ).rejects.toThrow();
-  const completion = { ...context, outcome: "completed", messages: [] };
-  await Promise.all(
-    Array.from({ length: 8 }, () =>
-      contribution!.runCompleted!(completion as any, { signal } as any),
-    ),
   );
-  const afterReplay = (await tool.execute({ action: "list" }, context)) as any;
-  expect(
-    afterReplay.items.filter((item: any) => item.source === "run:run"),
-  ).toHaveLength(1);
-  expect(host.notifications!.show).toHaveBeenCalledTimes(2);
+  expect(publish).toHaveBeenCalledWith(
+    {
+      title: "Ready",
+      body: "Report",
+      target: { type: "conversation", sessionId: "session" },
+    },
+    context,
+  );
+  expect(contribution!.ui).toBeUndefined();
+  expect(contribution!.runCompleted).toBeUndefined();
 });
