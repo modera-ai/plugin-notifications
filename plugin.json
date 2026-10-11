@@ -50,5 +50,6 @@
       "name": "通知",
       "description": "向系统消息中心发布重要任务结果。"
     }
-  }
+  },
+  "contributions": ["services"]
 }
