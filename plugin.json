@@ -4,7 +4,7 @@
   "extensions": [],
   "id": "modera.notifications",
   "name": "Notifications",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Publish agent messages to the system notification center.",
   "author": "Modera",
   "category": "productivity",
